@@ -9,100 +9,77 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var colorCycle = 0.0
-    
+    @State private var rows = 4
+    @State private var columns = 4
+
     var body: some View {
-        VStack {
-            ColorCyclingCircle(amount: self.colorCycle)
-                .frame(width: 300, height: 300)
-            Slider(value: $colorCycle)
-        }
+        Checkerboard(rows: rows, columns: columns)
+            .onTapGesture {
+                withAnimation(.linear(duration: 3)) {
+                    self.rows = 8
+                    self.columns = 16
+                }
+            }
     }
 }
 
-struct Triangle: Shape {
+struct Trapezoid: Shape {
+    var insetAmount: CGFloat
+    
     func path(in rect: CGRect) -> Path {
         var path = Path()
         
-        path.move(to: CGPoint(x: rect.midX, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.move(to: CGPoint(x: 0, y: rect.maxY))
+        path.addLine(to: CGPoint(x: insetAmount, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - insetAmount, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.midY))
-        
-        return path
-    }
-}
+        path.addLine(to: CGPoint(x: 0, y: rect.maxY))
 
-struct Arc: InsettableShape {
-    
-    var startAngle: Angle
-    var endAngle: Angle
-    var clockwise: Bool
-    var insetAmount: CGFloat = 0
-    
-    func path(in rect: CGRect) -> Path {
-        let rotationAdjustment = Angle.degrees(90)
-        let modifiedStart = startAngle - rotationAdjustment
-        let modifiedEnd = endAngle - rotationAdjustment
-        
-        var path = Path()
-        path.addArc(center: CGPoint(x: rect.midX, y: rect.midY), radius: rect.width / 2 - insetAmount, startAngle: modifiedStart, endAngle: modifiedEnd, clockwise: !clockwise)
         return path
     }
     
-    func inset(by amount: CGFloat) -> some InsettableShape {
-        var arc = self
-        arc.insetAmount += amount
-        return arc
+    var animatableData: CGFloat {
+        get { insetAmount }
+        set { self.insetAmount = newValue }
     }
 }
 
-struct Flower: Shape {
-    var petalOffset: Double = -20
-    var petalWidth: Double = 100
-    
+struct Checkerboard: Shape {
+    var rows: Int
+    var columns: Int
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        
-        for number in stride(from: 0, to: CGFloat.pi * 2, by: CGFloat.pi / 8) {
-            let rotation = CGAffineTransform(rotationAngle: number)
-            let position = rotation.concatenating(CGAffineTransform(translationX: rect.width / 2, y: rect.height / 2))
-            let originalPetal = Path(ellipseIn: CGRect(x: CGFloat(petalOffset), y: 0, width: CGFloat(petalWidth), height: rect.width / 2))
-            let rotatedPetal = originalPetal.applying(position)
-            
-            path.addPath(rotatedPetal)
-        }
-        return path
-    }
-}
 
-struct ColorCyclingCircle: View {
-    var amount = 0.0
-    var steps = 100
-    
-    var body: some View {
-        ZStack {
-            ForEach(0..<steps) { step in
-                Circle()
-                    .inset(by: CGFloat(step))
-//                    .strokeBorder(self.color(for: step, brightness: 1), lineWidth: 2)
-                .strokeBorder(LinearGradient(gradient: Gradient(colors: [
-                    self.color(for: step, brightness: 1),
-                    self.color(for: step, brightness: 0.5),
-                ]),startPoint: .top, endPoint: .bottom), lineWidth: 2)
+        // figure out how big each row/column needs to be
+        let rowSize = rect.height / CGFloat(rows)
+        let columnSize = rect.width / CGFloat(columns)
+
+        // loop over all rows and columns, making alternating squares colored
+        for row in 0..<rows {
+            for column in 0..<columns {
+                if (row + column).isMultiple(of: 2) {
+                    // this square should be colored; add a rectangle here
+                    let startX = columnSize * CGFloat(column)
+                    let startY = rowSize * CGFloat(row)
+
+                    let rect = CGRect(x: startX, y: startY, width: columnSize, height: rowSize)
+                    path.addRect(rect)
+                }
             }
         }
-        .drawingGroup()
+
+        return path
     }
     
-    func color(for value: Int, brightness: Double) -> Color {
-        var targetHue = Double(value) / Double(steps) + amount
-        
-        if targetHue > 1 {
-            targetHue -= 1
+    var animatableData: AnimatablePair<Double, Double> {
+        get {
+            AnimatablePair(Double(rows), Double(columns))
         }
-        
-        return Color(hue: targetHue, saturation: 1, brightness: brightness)
+        set {
+            self.rows = Int(newValue.first)
+            self.rows = Int(newValue.second)
+        }
     }
 }
 
