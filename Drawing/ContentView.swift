@@ -10,12 +10,22 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var colorCycle = 0.0
+    @State private var arrowThickness = 0.0
     
     var body: some View {
         VStack {
-            ColorCyclingCircle(amount: self.colorCycle)
-                .frame(width: 300, height: 300)
-            Slider(value: $colorCycle)
+            Arrow(amount: CGFloat(arrowThickness))
+                .stroke(Color.red, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .onTapGesture {
+                    withAnimation {
+                        if self.arrowThickness == 0 {
+                            self.arrowThickness = 40
+                        } else {
+                            self.arrowThickness = 0
+                        }
+                    }
+            }
+            
         }
     }
 }
@@ -33,27 +43,31 @@ struct Triangle: Shape {
     }
 }
 
-struct Arc: InsettableShape {
+struct Arrow: InsettableShape {
     
-    var startAngle: Angle
-    var endAngle: Angle
-    var clockwise: Bool
-    var insetAmount: CGFloat = 0
+    var amount: CGFloat = 0
     
     func path(in rect: CGRect) -> Path {
-        let rotationAdjustment = Angle.degrees(90)
-        let modifiedStart = startAngle - rotationAdjustment
-        let modifiedEnd = endAngle - rotationAdjustment
-        
         var path = Path()
-        path.addArc(center: CGPoint(x: rect.midX, y: rect.midY), radius: rect.width / 2 - insetAmount, startAngle: modifiedStart, endAngle: modifiedEnd, clockwise: !clockwise)
+        path.move(to: CGPoint(x: rect.width / 2, y: 0))
+        path.addLine(to: CGPoint(x: amount, y: rect.height / 3))
+        path.addLine(to: CGPoint(x: rect.width - amount, y: rect.height / 3))
+        path.addLine(to: CGPoint(x: rect.width / 2, y: 0))
+        
+        path.addRect(CGRect(x: rect.width / 4 + amount, y: rect.height / 3, width: rect.width / 2 - amount * 2, height: rect.height / 3 * 2))
+        
         return path
     }
     
-    func inset(by amount: CGFloat) -> some InsettableShape {
-        var arc = self
-        arc.insetAmount += amount
-        return arc
+    func inset(by amount: CGFloat) -> Arrow {
+        var arrow = self
+        arrow.amount = amount
+        return arrow
+    }
+    
+    var animatableData: CGFloat {
+        get { self.amount }
+        set { self.amount = newValue }
     }
 }
 
@@ -75,6 +89,7 @@ struct Flower: Shape {
         return path
     }
 }
+
 
 struct ColorCyclingCircle: View {
     var amount = 0.0
